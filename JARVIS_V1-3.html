@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#050b18">
+<title>J.A.R.V.I.S. — Personal Assistant</title>
+<style>
+  :root { color-scheme: dark; --cyan:#52eaff; --blue:#4b83ff; --muted:#91a7c9; }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; min-height:100vh; color:#eaf7ff;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    background:radial-gradient(ellipse at 50% 15%,#102d51 0%,#071426 42%,#030711 100%);
+  }
+  .wrap { width:min(760px,100%); margin:auto; padding:24px 16px 34px; }
+  header { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .brand { letter-spacing:.22em; font-size:12px; color:var(--cyan); font-weight:800; }
+  .status { font-size:12px; color:#a5f7cf; border:1px solid #2a8269; border-radius:99px; padding:6px 10px; }
+  h1 { text-align:center; font-size:clamp(26px,7vw,42px); letter-spacing:.12em; margin:28px 0 4px; }
+  .sub { text-align:center; color:var(--muted); font-size:13px; letter-spacing:.12em; }
+  .core-area { display:grid; place-items:center; padding:28px 0 18px; }
+  .core {
+    width:190px; height:190px; border-radius:50%; display:grid; place-items:center;
+    border:1px solid #4feaffaa;
+    background:radial-gradient(circle,#194c75 0%,#0b2746 35%,#07172b 61%,#06101f 72%);
+    box-shadow:0 0 22px #29c9ff44,inset 0 0 35px #2bbfff22;
+    position:relative;
+  }
+  .core:before,.core:after { content:""; position:absolute; border-radius:50%; border:1px solid #45dfff66; inset:-12px; }
+  .core:after { inset:-23px; border-style:dashed; opacity:.6; animation:spin 24s linear infinite; }
+  .core.listening { box-shadow:0 0 38px #3dffd988,inset 0 0 42px #3dffd944; border-color:#74ffca; }
+  .core.speaking { box-shadow:0 0 38px #578dff99,inset 0 0 42px #578dff44; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .arc { width:88px; height:88px; border-radius:50%; border:3px solid var(--cyan); border-left-color:transparent; border-right-color:transparent; display:grid; place-items:center; box-shadow:0 0 20px #52eaff55; }
+  .arc span { font-size:25px; font-weight:300; letter-spacing:.1em; }
+  .mic {
+    display:block; margin:22px auto 8px; width:76px; height:76px; border-radius:50%;
+    border:1px solid #70edff; color:#04101b; font-size:27px; cursor:pointer;
+    background:linear-gradient(135deg,#7ff4ff,#419bff); box-shadow:0 0 24px #40d8ff55;
+  }
+  .mic:active { transform:scale(.96); }
+  .hint { text-align:center; font-size:12px; color:var(--muted); }
+  .panel { background:#09182bcc; border:1px solid #244665; border-radius:16px; padding:16px; margin-top:16px; box-shadow:0 12px 32px #0003; }
+  .panel h2 { margin:0 0 10px; font-size:12px; color:var(--cyan); letter-spacing:.16em; }
+  #transcript { min-height:28px; line-height:1.5; overflow-wrap:anywhere; }
+  #reply { color:#c4dcff; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .row { display:flex; gap:8px; }
+  input,button.small { font:inherit; border-radius:10px; border:1px solid #315675; padding:11px 12px; }
+  input { flex:1; min-width:0; color:#eefaff; background:#06111f; }
+  button.small { color:#eaf7ff; background:#12304a; cursor:pointer; }
+  button.small:focus-visible,input:focus-visible,button:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+  .commands { display:flex; flex-wrap:wrap; gap:7px; }
+  .chip { font-size:12px; padding:7px 9px; border-radius:99px; border:1px solid #2b506e; color:#bcecff; background:#0b2137; }
+  .note { font-size:12px; color:#8fa9c5; line-height:1.55; }
+  footer { text-align:center; color:#5f7896; font-size:11px; margin-top:20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">STARK-INSPIRED SYSTEM</div>
+    <div class="status" id="status">● STANDBY</div>
+  </header>
+
+  <h1>J.A.R.V.I.S.</h1>
+  <div class="sub">PERSONAL ASSISTANT · V1.0</div>
+
+  <div class="core-area">
+    <div class="core" id="core" aria-label="JARVIS system core">
+      <div class="arc"><span>J</span></div>
+    </div>
+  </div>
+
+  <button class="mic" id="mic" aria-label="Start voice command" title="Start voice command">🎙</button>
+  <div class="hint" id="hint">Tap the microphone and speak a command</div>
+
+  <section class="panel">
+    <h2>VOICE INPUT</h2>
+    <div id="transcript" aria-live="polite">Waiting for your command…</div>
+  </section>
+
+  <section class="panel">
+    <h2>JARVIS RESPONSE</h2>
+    <div id="reply" aria-live="polite">Good evening. JARVIS V1 is online. Tap the microphone when you're ready.</div>
+    <div class="row" style="margin-top:12px">
+      <button class="small" id="repeat">🔊 Repeat</button>
+      <button class="small" id="stop">■ Stop voice</button>
+      <button class="small" id="clear">Clear screen</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>QUICK COMMANDS</h2>
+    <div class="commands">
+      <span class="chip">“What time is it?”</span>
+      <span class="chip">“What is today's date?”</span>
+      <span class="chip">“Open YouTube”</span>
+      <span class="chip">“Open Google”</span>
+      <span class="chip">“Remember buy milk”</span>
+      <span class="chip">“Read my notes”</span>
+      <span class="chip">“Clear my notes”</span>
+      <span class="chip">“Help”</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>LOCAL NOTES</h2>
+    <div class="row">
+      <input id="noteInput" placeholder="Type a note to save on this device…" maxlength="300">
+      <button class="small" id="saveNote">Save</button>
+    </div>
+    <div id="notes" class="note" style="margin-top:12px">No notes saved yet.</div>
+  </section>
+
+  <section class="panel">
+    <h2>ABOUT THIS VERSION</h2>
+    <div class="note">This prototype handles simple commands on your device. It does not yet have a connected AI brain, and it cannot freely control your phone. Microphone access and speech recognition depend on your browser and may require an HTTPS website and an internet connection. Notes are stored in this browser on this device.</div>
+  </section>
+  <footer>J.A.R.V.I.S. · PERSONAL PROJECT · V1</footer>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const status = $("status"), core = $("core"), hint = $("hint");
+  const transcript = $("transcript"), reply = $("reply");
+  const mic = $("mic");
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let lastReply = "Good evening. JARVIS V1 is online. Tap the microphone when you're ready.";
+
+  function setStatus(text, mode="") {
+    status.textContent = "● " + text;
+    core.className = "core " + mode;
+  }
+  function speak(text) {
+    lastReply = text;
+    reply.textContent = text;
+    if (!("speechSynthesis" in window)) {
+      hint.textContent = "Text reply shown. Speech synthesis is not supported in this browser.";
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-IN";
+    utterance.rate = 1;
+    utterance.pitch = 0.92;
+    utterance.onstart = () => setStatus("SPEAKING", "speaking");
+    utterance.onend = () => { setStatus("STANDBY"); hint.textContent = "Tap the microphone and speak a command"; };
+    utterance.onerror = () => setStatus("STANDBY");
+    window.speechSynthesis.speak(utterance);
+  }
+  function getNotes() {
+    try { return JSON.parse(localStorage.getItem("jarvis_v1_notes") || "[]"); }
+    catch (_) { return []; }
+  }
+  function renderNotes() {
+    const notes = getNotes();
+    $("notes").textContent = notes.length ? notes.map((n,i) => `${i+1}. ${n}`).join("\n") : "No notes saved yet.";
+    $("notes").style.whiteSpace = "pre-wrap";
+  }
+  function addNote(note) {
+    const clean = note.trim().slice(0,300);
+    if (!clean) { speak("Please tell me what note to save."); return; }
+    const notes = getNotes();
+    notes.push(clean);
+    localStorage.setItem("jarvis_v1_notes", JSON.stringify(notes));
+    renderNotes();
+    speak("Saved your note: " + clean);
+  }
+  function openSite(url, name) {
+    speak("Opening " + name + ".");
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+  function handleCommand(raw) {
+    const text = raw.toLowerCase().trim().replace(/[.!?]+$/,"");
+    if (!text) { speak("I didn't catch that. Please try again."); return; }
+
+    if (/\b(help|what can you do|commands)\b/.test(text)) {
+      speak("I can tell you the time and date, open Google or YouTube, save notes, read your notes, and clear your notes. Try saying, remember buy milk.");
+    } else if (/\b(time|clock)\b/.test(text)) {
+      speak("The time is " + new Date().toLocaleTimeString("en-IN", {hour:"numeric",minute:"2-digit"}) + ".");
+    } else if (/\b(date|today|day is it)\b/.test(text)) {
+      speak("Today is " + new Date().toLocaleDateString("en-IN", {weekday:"long",year:"numeric",month:"long",day:"numeric"}) + ".");
+    } else if (/\b(open|launch|go to)\b/.test(text) && /\byoutube\b/.test(text)) {
+      openSite("https://www.youtube.com/", "YouTube");
+    } else if (/\b(open|launch|go to|search)\b/.test(text) && /\bgoogle\b/.test(text)) {
+      openSite("https://www.google.com/", "Google");
+    } else if (/^(remember|save note|take a note|note down)\b/.test(text)) {
+      addNote(raw.trim().replace(/^(remember|save note|take a note|note down)\s*/i,""));
+    } else if (/\b(read|show|list)\b/.test(text) && /\bnotes?\b/.test(text)) {
+      const notes = getNotes();
+      speak(notes.length ? "Your saved notes are: " + notes.map((n,i) => `${i+1}. ${n}`).join(". ") : "You don't have any saved notes yet.");
+    } else if (/\b(clear|delete|erase)\b/.test(text) && /\bnotes?\b/.test(text)) {
+      localStorage.removeItem("jarvis_v1_notes");
+      renderNotes();
+      speak("Your local notes have been cleared.");
+    } else if (/\b(hello|hi jarvis|hey jarvis)\b/.test(text)) {
+      speak("Hello. JARVIS is online and ready.");
+    } else if (/\b(who are you|your name)\b/.test(text)) {
+      speak("I am JARVIS, your browser-based personal assistant prototype.");
+    } else {
+      speak("I don't know that command yet. Say help to hear the commands I can handle.");
+    }
+  }
+
+  function startListening() {
+    if (!Recognition) {
+      speak("Speech recognition is not supported by this browser. Try opening this page in Google Chrome on Android, using an HTTPS website.");
+      return;
+    }
+    try {
+      recognition = new Recognition();
+      recognition.lang = "en-IN";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.onstart = () => {
+        setStatus("LISTENING", "listening");
+        hint.textContent = "Listening… speak now";
+        transcript.textContent = "Listening for your voice…";
+        mic.textContent = "🔴";
+      };
+      recognition.onresult = (event) => {
+        const words = event.results[0][0].transcript;
+        transcript.textContent = words;
+        handleCommand(words);
+      };
+      recognition.onerror = (event) => {
+        setStatus("STANDBY");
+        mic.textContent = "🎙";
+        hint.textContent = event.error === "not-allowed"
+          ? "Microphone permission was denied. Allow microphone access in browser settings."
+          : "Couldn't hear you (" + event.error + "). Try again.";
+      };
+      recognition.onend = () => {
+        mic.textContent = "🎙";
+        if (status.textContent.includes("LISTENING")) setStatus("STANDBY");
+      };
+      recognition.start();
+    } catch (err) {
+      setStatus("STANDBY");
+      mic.textContent = "🎙";
+      hint.textContent = "Couldn't start the microphone. Please try again.";
+    }
+  }
+
+  mic.addEventListener("click", startListening);
+  $("repeat").addEventListener("click", () => speak(lastReply));
+  $("stop").addEventListener("click", () => {
+    if (recognition) { try { recognition.stop(); } catch (_) {} }
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    mic.textContent = "🎙";
+    setStatus("STANDBY");
+    hint.textContent = "Voice stopped.";
+  });
+  $("clear").addEventListener("click", () => {
+    transcript.textContent = "Waiting for your command…";
+    reply.textContent = "Screen cleared. JARVIS is ready.";
+    lastReply = "Screen cleared. JARVIS is ready.";
+    hint.textContent = "Tap the microphone and speak a command";
+  });
+  $("saveNote").addEventListener("click", () => {
+    addNote($("noteInput").value);
+    $("noteInput").value = "";
+  });
+  $("noteInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { addNote($("noteInput").value); $("noteInput").value = ""; }
+  });
+  renderNotes();
+})();
+</script>
+</body>
+</html>
